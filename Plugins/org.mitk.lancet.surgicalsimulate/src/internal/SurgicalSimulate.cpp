@@ -28,32 +28,32 @@ const std::string SurgicalSimulate::VIEW_ID = "org.mitk.views.surgicalsimulate";
 
 void SurgicalSimulate::SetFocus()
 {
-  m_Controls.buttonPerformImageProcessing->setFocus();
+  m_Controls.pushButton_ndiconnect->setFocus();
 }
 
 void SurgicalSimulate::CreateQtPartControl(QWidget *parent)
 {
   // create GUI widgets from the Qt Designer's .ui file
   m_Controls.setupUi(parent);
-  connect(m_Controls.buttonPerformImageProcessing, &QPushButton::clicked, this, &SurgicalSimulate::DoImageProcessing);
+  //connect(m_Controls.buttonPerformImageProcessing, &QPushButton::clicked, this, &SurgicalSimulate::DoImageProcessing);
 }
 
 void SurgicalSimulate::OnSelectionChanged(berry::IWorkbenchPart::Pointer /*source*/,
                                                 const QList<mitk::DataNode::Pointer> &nodes)
 {
   // iterate all selected objects, adjust warning visibility
-  foreach (mitk::DataNode::Pointer node, nodes)
-  {
-    if (node.IsNotNull() && dynamic_cast<mitk::Image *>(node->GetData()))
-    {
-      m_Controls.labelWarning->setVisible(false);
-      m_Controls.buttonPerformImageProcessing->setEnabled(true);
-      return;
-    }
-  }
-
-  m_Controls.labelWarning->setVisible(true);
-  m_Controls.buttonPerformImageProcessing->setEnabled(false);
+  // foreach (mitk::DataNode::Pointer node, nodes)
+  // {
+  //   if (node.IsNotNull() && dynamic_cast<mitk::Image *>(node->GetData()))
+  //   {
+  //     m_Controls.labelWarning->setVisible(false);
+  //     m_Controls.buttonPerformImageProcessing->setEnabled(true);
+  //     return;
+  //   }
+  // }
+  //
+  // m_Controls.labelWarning->setVisible(true);
+  // m_Controls.buttonPerformImageProcessing->setEnabled(false);
 }
 
 void SurgicalSimulate::DoImageProcessing()
