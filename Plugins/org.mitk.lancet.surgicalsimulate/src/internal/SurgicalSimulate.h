@@ -18,6 +18,8 @@ found in the LICENSE file.
 
 #include <QmitkAbstractView.h>
 
+
+#include "mitkTrackingDeviceSource.h"
 #include "ui_SurgicalSimulateControls.h"
 
 /**
@@ -46,10 +48,18 @@ protected:
   virtual void OnSelectionChanged(berry::IWorkbenchPart::Pointer source,
                                   const QList<mitk::DataNode::Pointer> &nodes) override;
 
-  /// \brief Called when the user clicks the GUI button
-  void DoImageProcessing();
+  /// \brief Step1:Use a NDI Vega Tracking Device
+  void UseVega();
+
+  // \brief Step1:Use a NDI Vega Tracking Device
+  void UseKuka();
 
   Ui::SurgicalSimulateControls m_Controls;
+
+  //vega trackingDeviceSource
+  mitk::TrackingDeviceSource::Pointer m_VegaSource;
+  //kuka trackingDeviceSource
+  mitk::TrackingDeviceSource::Pointer m_KukaSource;
 };
 
 #endif // SurgicalSimulate_h

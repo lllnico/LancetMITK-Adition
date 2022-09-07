@@ -59,7 +59,7 @@ void RobotView::CreateQtPartControl(QWidget *parent)
   // timer
   m_timer.setInterval(10);
 
-  m_device = KukaRobotDevice::New();
+  m_device = lancet::KukaRobotDevice::New();
 
   connect(&m_timer, SIGNAL(timeout()), this, SLOT(UpdateToolPosition()));
 
@@ -110,7 +110,7 @@ void RobotView::ConnectDevice()
       auto device = deviceSource->GetTrackingDevice();
       if (device->GetTrackingDeviceName() == "Kuka")
       {
-        m_device = dynamic_cast<KukaRobotDevice*>(deviceSource->GetTrackingDevice().GetPointer());
+        m_device = dynamic_cast<lancet::KukaRobotDevice*>(deviceSource->GetTrackingDevice().GetPointer());
       }
     }
   }
@@ -121,7 +121,7 @@ void RobotView::ConnectDevice()
   
   if (m_device.IsNull())
   {
-    m_device = KukaRobotDevice::New();
+    m_device = lancet::KukaRobotDevice::New();
   }
   if (m_device->GetState()==0)
   {

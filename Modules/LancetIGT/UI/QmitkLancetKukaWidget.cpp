@@ -50,7 +50,7 @@ void QmitkLancetKukaWidget::CreateQtPartControl(QWidget *parent)
 
 void QmitkLancetKukaWidget::SelfCheck()
 {
-  auto device = dynamic_cast<KukaRobotDevice*>( GetTrackingDevice().GetPointer());
+  auto device = dynamic_cast<lancet::KukaRobotDevice*>( GetTrackingDevice().GetPointer());
   if (device!=nullptr && device->GetIsConnected())
   {
     device->RequestExecOperate(/*"Robot",*/ "setio", { "20", "20" });
@@ -93,7 +93,7 @@ void QmitkLancetKukaWidget::AddOutput(std::string s)
 
 mitk::TrackingDevice::Pointer QmitkLancetKukaWidget::GetTrackingDevice()
 {
-  KukaRobotDevice::Pointer tempTrackingDevice = KukaRobotDevice::New();
+  lancet::KukaRobotDevice::Pointer tempTrackingDevice = lancet::KukaRobotDevice::New();
 
   //get port
   int port = 0;
