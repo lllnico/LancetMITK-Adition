@@ -19,6 +19,7 @@ found in the LICENSE file.
 #include <QmitkAbstractView.h>
 
 
+#include "lancetNavigationObjectVisualizationFilter.h"
 #include "mitkTrackingDeviceSource.h"
 #include "ui_SurgicalSimulateControls.h"
 
@@ -39,6 +40,12 @@ class SurgicalSimulate : public QmitkAbstractView
 public:
   static const std::string VIEW_ID;
 
+public slots:
+  // \brief Step1:Use a NDI Vega Tracking Device
+  void UseKuka();
+
+  void OnKukaVisualizeTimer();
+
 protected:
   virtual void CreateQtPartControl(QWidget *parent) override;
 
@@ -51,8 +58,7 @@ protected:
   /// \brief Step1:Use a NDI Vega Tracking Device
   void UseVega();
 
-  // \brief Step1:Use a NDI Vega Tracking Device
-  void UseKuka();
+  
 
   Ui::SurgicalSimulateControls m_Controls;
 
@@ -60,6 +66,10 @@ protected:
   mitk::TrackingDeviceSource::Pointer m_VegaSource;
   //kuka trackingDeviceSource
   mitk::TrackingDeviceSource::Pointer m_KukaSource;
+
+  lancet::NavigationObjectVisualizationFilter::Pointer m_KukaVisualizer;
+  QTimer* m_KukaVisualizeTimer{ nullptr };
+  mitk::NavigationToolStorage::Pointer  m_KukaToolStorage;
 };
 
 #endif // SurgicalSimulate_h
