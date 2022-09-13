@@ -18,6 +18,9 @@
 #include "mitkTrackingTool.h"
 
 //KUKA ROBOT API
+#include <math.h>
+#include <math.h>
+
 #include "robotapi.h"
 #include "udpsocketrobotheartbeat.h" //udp
 
@@ -75,8 +78,12 @@ namespace lancet
 
     std::array<double, 6> GetTrackingData();
 
-    //robotDevice api, move to RobotDevice abstract class later
+    //todo robotDevice api, move to RobotDevice abstract class later
     bool RequestExecOperate(const QString& funname, const QStringList& param);
+
+    void RobotMove(vtkMatrix4x4* T_robot);
+
+    std::vector<double> kukamatrix2angle(const double matrix3x3[3][3]);
 
   protected:
     KukaRobotDevice();

@@ -48,6 +48,9 @@ void SurgicalSimulate::CreateQtPartControl(QWidget *parent)
   connect(m_Controls.pushButton_connectKuka, &QPushButton::clicked, this, &SurgicalSimulate::UseKuka);
   connect(m_Controls.pushButton_connectVega, &QPushButton::clicked, this, &SurgicalSimulate::UseVega);
   connect(m_Controls.pushButton_captureRobot, &QPushButton::clicked, this, &SurgicalSimulate::OnRobotCapture);
+  connect(m_Controls.pushButton_automove, &QPushButton::clicked, this, &SurgicalSimulate::OnAutoMove);
+  connect(m_Controls.pushButton_selfcheck, &QPushButton::clicked, this, &SurgicalSimulate::OnSelfCheck);
+  connect(m_Controls.pushButton_resetRobotReg, &QPushButton::clicked, this, &SurgicalSimulate::OnResetRobotRegistration);
 }
 
 void SurgicalSimulate::OnSelectionChanged(berry::IWorkbenchPart::Pointer /*source*/,
@@ -108,6 +111,15 @@ void SurgicalSimulate::UseVega()
 
 void SurgicalSimulate::GeneratePoses()
 {
+  //Use current pose as reference to generate new poses
+  mitk::NavigationData::Pointer nd_robot2flange = m_KukaSource->GetOutput(0)->Clone();
+
+  vtkMatrix4x4* vtkMatrix = vtkMatrix4x4::New();
+  mitk::TransferItkTransformToVtkMatrix(nd_robot2flange->GetAffineTransform3D().GetPointer(), vtkMatrix);
+
+  
+
+  //
 }
 
 void SurgicalSimulate::CapturePose(bool translationOnly)
@@ -153,11 +165,11 @@ void SurgicalSimulate::UseKuka()
   //KukaRobotDevice and make some settings which are necessary for a proper connection to the device.
   MITK_INFO << "Kuka tracking";
   //QMessageBox::warning(nullptr, "Warning", "You have to set the parameters for the NDITracking device inside the code (QmitkIGTTutorialView::OnStartIGT()) before you can use it.");
-  lancet::KukaRobotDevice::Pointer kukaTrackingDevice = lancet::KukaRobotDevice::New();  //instantiate
+  m_KukaTrackingDevice = lancet::KukaRobotDevice::New();  //instantiate
 
   //Create Navigation Data Source with the factory class, and the visualize filter.
   lancet::TrackingDeviceSourceConfiguratorLancet::Pointer kukaSourceFactory =
-    lancet::TrackingDeviceSourceConfiguratorLancet::New(m_KukaToolStorage, kukaTrackingDevice);
+    lancet::TrackingDeviceSourceConfiguratorLancet::New(m_KukaToolStorage, m_KukaTrackingDevice);
 
   m_KukaSource = kukaSourceFactory->CreateTrackingDeviceSource(m_KukaVisualizer);
 
@@ -184,6 +196,18 @@ void SurgicalSimulate::OnKukaVisualizeTimer()
   // auto geo = this->GetDataStorage()->ComputeBoundingGeometry3D(this->GetDataStorage()->GetAll());
   // mitk::RenderingManager::GetInstance()->InitializeViews(geo);
   this->RequestRenderWindowUpdate();
+}
+
+void SurgicalSimulate::OnSelfCheck()
+{
+  // if (m_KukaTrackingDevice.IsNotNull() && m_KukaTrackingDevice->GetState()!=0)
+  // {
+    m_KukaTrackingDevice->RequestExecOperate(/*"Robot",*/ "setio", { "20", "20" });
+  // }
+  // else
+  // {
+  //   MITK_ERROR << "robot not connect";
+  // }
 }
 
 void SurgicalSimulate::OnVegaVisualizeTimer()
@@ -232,5 +256,129 @@ void SurgicalSimulate::OnRobotCapture()
 
   
 
+}
+
+void SurgicalSimulate::OnAutoMove()
+{
+  //Use current pose as reference to generate new poses
+  mitk::NavigationData::Pointer nd_robot2flange = m_KukaSource->GetOutput(0);
+  mitk::AffineTransform3D::Pointer affine = mitk::AffineTransform3D::New();
+  affine = nd_robot2flange->GetAffineTransform3D()->Clone();
+  double axisx[3]{ 1,0,0 };
+  double axisy[3]{ 0,1,0 };
+  double axisz[3]{ 0,0,1 };
+  vtkMatrix4x4* vtkMatrix = vtkMatrix4x4::New();
+
+  double trans1[3]{ 0,0,50 };
+  double trans2[3]{ 0,50,0 };
+  double trans3[3]{ 50,0,0 };
+  double trans4[3]{ 0,0,-50 };
+  double trans5[3]{ -25,0,0 };
+  double trans6[3]{ 0,-25,0 };
+  double trans7[3]{ 0,-25,0 };
+  double trans8[3]{ 25,0,0 };
+  double trans9[3]{ -25,0,0 };
+  switch (m_IndexOfRobotCapture)
+  {
+  case 1: //z+50
+
+    affine->Translate(trans1);
+    mitk::TransferItkTransformToVtkMatrix(affine.GetPointer(), vtkMatrix);
+
+    m_KukaTrackingDevice->RobotMove(vtkMatrix);
+    break;
+
+  case 2: //y+50
+    
+
+    affine->Translate(trans2);
+    
+    mitk::TransferItkTransformToVtkMatrix(affine.GetPointer(), vtkMatrix);
+
+    m_KukaTrackingDevice->RobotMove(vtkMatrix);
+    break;
+
+  case 3: //x+50
+    
+
+    affine->Translate(trans3);
+
+    mitk::TransferItkTransformToVtkMatrix(affine.GetPointer(), vtkMatrix);
+
+    m_KukaTrackingDevice->RobotMove(vtkMatrix);
+    break;
+
+  case 4: //z-50
+
+
+    affine->Translate(trans4);
+    mitk::TransferItkTransformToVtkMatrix(affine.GetPointer(), vtkMatrix);
+
+    m_KukaTrackingDevice->RobotMove(vtkMatrix);
+    break;
+
+  case 5: //x rotate 10 degree x -25
+
+
+    affine->Rotate3D(axisx, 0.174);
+    affine->Translate(trans5);
+
+    mitk::TransferItkTransformToVtkMatrix(affine.GetPointer(), vtkMatrix);
+
+    m_KukaTrackingDevice->RobotMove(vtkMatrix);
+    break;
+
+  case 6: //x rotate -20 degree y -25
+
+    affine->Rotate3D(axisx, -0.174*2);
+    affine->Translate(trans6);
+
+    mitk::TransferItkTransformToVtkMatrix(affine.GetPointer(), vtkMatrix);
+
+    m_KukaTrackingDevice->RobotMove(vtkMatrix);
+    break;
+
+  case 7: //y rotate 10 degree y +25
+
+    affine->Rotate3D(axisy, 0.174 );
+    affine->Translate(trans7);
+    mitk::TransferItkTransformToVtkMatrix(affine.GetPointer(), vtkMatrix);
+
+    m_KukaTrackingDevice->RobotMove(vtkMatrix);
+    break;
+
+  case 8: //y rotate -20 degree x +25
+
+    affine->Rotate3D(axisy, -0.174*2);
+    affine->Translate(trans8);
+    mitk::TransferItkTransformToVtkMatrix(affine.GetPointer(), vtkMatrix);
+
+    m_KukaTrackingDevice->RobotMove(vtkMatrix);
+    break;
+
+  case 9: //z rotate 20 degree x -25
+
+    affine->Rotate3D(axisz, 0.174 * 2);
+    affine->Translate(trans9);
+    mitk::TransferItkTransformToVtkMatrix(affine.GetPointer(), vtkMatrix);
+
+    m_KukaTrackingDevice->RobotMove(vtkMatrix);
+    break;
+
+  default: 
+ 
+    mitk::TransferItkTransformToVtkMatrix(affine.GetPointer(), vtkMatrix);
+
+    m_KukaTrackingDevice->RobotMove(vtkMatrix);
+    break;
+  }
+  
+  
+}
+
+void SurgicalSimulate::OnResetRobotRegistration()
+{
+  m_RobotRegistration->RemoveAllPose();
+  m_IndexOfRobotCapture = 0;
 }
 

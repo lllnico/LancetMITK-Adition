@@ -19,6 +19,7 @@ found in the LICENSE file.
 #include <QmitkAbstractView.h>
 
 
+#include "kukaRobotDevice.h"
 #include "lancetNavigationObjectVisualizationFilter.h"
 #include "mitkTrackingDeviceSource.h"
 #include "robotRegistration.h"
@@ -45,12 +46,15 @@ public slots:
   //Step1:Use a kuka Tracking Device
   void UseKuka();
   void OnKukaVisualizeTimer();
+  void OnSelfCheck();
   //Step1:Use a NDI Vega Tracking Device
   void UseVega();
   void OnVegaVisualizeTimer();
 
   //Step2:Robot Registration;
   void OnRobotCapture();
+  void OnAutoMove();
+  void OnResetRobotRegistration();
 
 
 protected:
@@ -77,6 +81,8 @@ protected:
 
   Ui::SurgicalSimulateControls m_Controls;
 
+
+  lancet::KukaRobotDevice::Pointer m_KukaTrackingDevice;
   //vega trackingDeviceSource
   mitk::TrackingDeviceSource::Pointer m_VegaSource;
   //kuka trackingDeviceSource
@@ -91,6 +97,7 @@ protected:
 
   //robot registration
   unsigned int m_IndexOfRobotCapture{0};
+  std::array<vtkMatrix4x4*, 10> m_AutoPoses{};
 };
 
 #endif // SurgicalSimulate_h

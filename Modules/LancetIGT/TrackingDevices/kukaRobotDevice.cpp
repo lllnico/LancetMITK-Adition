@@ -185,6 +185,122 @@ namespace lancet
     return false;
   }
 
+  void KukaRobotDevice::RobotMove(vtkMatrix4x4* T_robot)
+  {
+
+    const double R[3][3] = { {T_robot->GetElement(0, 0), T_robot->GetElement(0, 1), T_robot->GetElement(0, 2)},
+      {T_robot->GetElement(1, 0), T_robot->GetElement(1, 1), T_robot->GetElement(1, 2)},
+      {T_robot->GetElement(2, 0), T_robot->GetElement(2, 1), T_robot->GetElement(2, 2) }
+    };
+
+    std::vector<double> abc = kukamatrix2angle(R);
+
+    QString str1 = QString::number(T_robot->GetElement(0, 3), 'f', 5);
+    QString str2 = QString::number(T_robot->GetElement(1, 3), 'f', 5);
+    QString str3 = QString::number(T_robot->GetElement(2, 3), 'f', 5);
+    QString str4 = QString::number(abc[0], 'f', 5);
+    QString str5 = QString::number(abc[1], 'f', 5);
+    QString str6 = QString::number(abc[2], 'f', 5);
+
+    QString param = str1 + "," + str2 + "," + str3 + "," + str4 + "," + str5 + "," + str6;
+    MITK_INFO << "Robot move to:" << param.toStdString();
+    RequestExecOperate( "movep", param.split(','));
+    //QThread::msleep(100);
+  }
+
+  std::vector<double> KukaRobotDevice::kukamatrix2angle(const double matrix3x3[3][3])
+  {
+    double nx = matrix3x3[0][0];
+    double ny = matrix3x3[0][1];
+    double nz = matrix3x3[0][2];
+    double ox = matrix3x3[1][0];
+    double oy = matrix3x3[1][1];
+    double oz = matrix3x3[1][2];
+    double ax = matrix3x3[2][0];
+    double ay = matrix3x3[2][1];
+    double az = matrix3x3[2][2];
+
+    //«ÛΩ‚Rx°¢Ry°¢Rz
+    //call Atan2(ax,sqrt(power(nx,2)+power(ox,2)),ry1)
+    //double cry = (double)sqrt(nx * nx + ox * ox);
+    double rx, ry, rz, rx2, ry2, rz2, rx_Origin, ry_Origin, rz_Origin;
+    double FlagRx = 0.0, FlagRy = 0.0, FlagRz = 0.0;
+    ry = (float)atan2(ax, (double)sqrt(nx * nx + ox * ox));
+    if (ry == 90)
+    {
+      rx = 0;
+      //call Atan2(ny,-nz,rz1)
+      rz = (float)atan2(ny, -nz);
+    }
+    else if (ry == -90)
+    {
+      rx = 0;
+      rz = (float)atan2(ny, nz);
+      //call Atan2(ny,nz,rz1);
+    }
+    else
+    {
+      //call Atan2(-ay/cos(ry1),az/cos(ry1),rx1)
+      //call Atan2(-ox/cos(ry1),nx/cos(ry1),rz1)
+      rx = (float)atan2(-ay / cos(ry), az / cos(ry));
+      rz = (float)atan2(-ox / cos(ry), nx / cos(ry));
+    }
+
+    //call Atan2(ax,-sqrt(power(nx,2)+power(ox,2)),ry2)
+    ry2 = (float)atan2(ax, -(double)sqrt(nx * nx + ox * ox));
+    if (ry2 == 90)
+    {
+      rx2 = 0;
+      //call Atan2(ny,-nz,rz1)
+      rz2 = (float)atan2(ny, -nz);
+    }
+    else if (ry2 == -90)
+    {
+      rx2 = 0;
+      rz2 = (float)atan2(ny, nz);
+      //call Atan2(ny,nz,rz1);
+    }
+    else
+    {
+      //call Atan2(-ay/cos(ry1),az/cos(ry1),rx1)
+      //call Atan2(-ox/cos(ry1),nx/cos(ry1),rz1)
+      rx2 = (float)atan2(-ay / cos(ry2), az / cos(ry2));
+      rz2 = (float)atan2(-ox / cos(ry2), nx / cos(ry2));
+    }
+
+    std::cout << "rz11:" << -rz * (180.0f / PI) << "   ry:" << -ry * (180.0f / PI) << "   rx:" << -rx * (180.0f / PI) << "\n";
+    std::cout << "rz22:" << -rz2 * (180.0f / PI) << "   ry:" << -ry2 * (180.0f / PI) << "   rx:" << -rx2 * (180.0f / PI) << "\n";
+    if (abs(rx) + abs(ry) + abs(rz) <= abs(rx2) + abs(ry2) + abs(rz2))
+    {
+      rx_Origin = -rx;
+      ry_Origin = -ry;
+      rz_Origin = -rz;
+    }
+    else
+    {
+      rx_Origin = -rx2;
+      ry_Origin = -ry2;
+      rz_Origin = -rz2;
+    }
+    std::vector<double> i;
+
+
+    if (abs(ry * (180.0f / PI)) < 90)
+    {
+      i.push_back(-rz * (180.0f / PI));
+      i.push_back(-ry * (180.0f / PI));
+      i.push_back(-rx * (180.0f / PI));
+    }
+    else
+    {
+      i.push_back(-rz2 * (180.0f / PI));
+      i.push_back(-ry2 * (180.0f / PI));
+      i.push_back(-rx2 * (180.0f / PI));
+    }
+    //MITK_INFO << i[0] << "," << i[1] << "," << i[2];
+    return i;
+  }
+
   KukaRobotDevice::KukaRobotDevice()
     :TrackingDevice()
   {
