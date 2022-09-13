@@ -23,6 +23,8 @@ found in the LICENSE file.
 
 // mitk image
 #include <mitkImage.h>
+#include <mitkAffineTransform3D.h>
+#include <mitkMatrixConvert.h>
 
 //igt
 #include <lancetVegaTrackingDevice.h>
@@ -44,6 +46,8 @@ void SurgicalSimulate::CreateQtPartControl(QWidget *parent)
   // create GUI widgets from the Qt Designer's .ui file
   m_Controls.setupUi(parent);
   connect(m_Controls.pushButton_connectKuka, &QPushButton::clicked, this, &SurgicalSimulate::UseKuka);
+  connect(m_Controls.pushButton_connectVega, &QPushButton::clicked, this, &SurgicalSimulate::UseVega);
+  connect(m_Controls.pushButton_captureRobot, &QPushButton::clicked, this, &SurgicalSimulate::OnRobotCapture);
 }
 
 void SurgicalSimulate::OnSelectionChanged(berry::IWorkbenchPart::Pointer /*source*/,
@@ -66,43 +70,70 @@ void SurgicalSimulate::OnSelectionChanged(berry::IWorkbenchPart::Pointer /*sourc
 
 void SurgicalSimulate::UseVega()
 {
-  //! [UseVega 1]
-  //Here we want to use the NDI Polaris tracking device. Therefore we instantiate a object of the class
-      //NDITrackingDevice and make some settings which are necessary for a proper connection to the device.
-  MITK_INFO << "NDI tracking";
-  QMessageBox::warning(nullptr, "Warning", "You have to set the parameters for the NDITracking device inside the code (QmitkIGTTutorialView::OnStartIGT()) before you can use it.");
-  lancet::NDIVegaTrackingDevice ::Pointer vega = lancet::NDIVegaTrackingDevice::New();  //instantiate
-  vega->SethostName("192.168.1.10");//set the device IP
-  vega->SetTrackingFrequency(2);//set tracking frequency to 60hz
-  
-  //! [UseVega 2]
-  //The tools represent the sensors of the tracking device. In this case we have a Probe and a Object Reference Frame(ObjRF).
-  //The TrackingDevice object it self fills the tool with data. So we have to add the tool to the
-  //TrackingDevice object.
-  // The ndi vega system needs a ".rom" file which describes the geometry of the markers related to the tool tip.
-  //NDI provides an own software (NDI Cygna 6D) to generate those files.
-  vega->AddTool("Probe", "c:\\myinstrument.rom");//todo change rom file path
-  vega->AddTool("ObjRF", "c:\\myinstrument.rom");//todo change rom file path
-  
+  //read in filename
+  QString filename = QFileDialog::getOpenFileName(nullptr, tr("Open Tool Storage"), "/", tr("Tool Storage Files (*.IGTToolStorage)"));
+  if (filename.isNull()) return;
 
-  //! [UseVega 3]
-    //The tracking device object is used for the physical connection to the device. To use the
-    //data inside of our tracking pipeline we need a source. This source encapsulate the tracking device
-    //and provides objects of the type mitk::NavigationData as output. The NavigationData objects stores
-    //position, orientation, if the data is valid or not and special error informations in a covariance
-    //matrix.
-    //
-    //Typically the start of a pipeline is a TrackingDeviceSource. To work correct we have to set a
-    //TrackingDevice object. Attention you have to set the tools before you set the whole TrackingDevice
-    //object to the TrackingDeviceSource because the source need to know how many outputs should be
-    //generated.
-  m_VegaSource = mitk::TrackingDeviceSource::New();   //We need the filter objects to stay alive,
-  //therefore they must be members.
-  m_VegaSource->SetTrackingDevice(vega); //Here we set the tracking device to the source of the pipeline.
+  //read tool storage from disk
+  std::string errorMessage = "";
+  mitk::NavigationToolStorageDeserializer::Pointer myDeserializer = mitk::NavigationToolStorageDeserializer::New(GetDataStorage());
+  m_VegaToolStorage = myDeserializer->Deserialize(filename.toStdString());
+  m_VegaToolStorage->SetName(filename.toStdString());
 
-   //! [UseVega 4]
-  m_KukaSource->Connect();                  //Now we connect to the tracking system.
-  //Note we do not call this on the TrackingDevice object
+  //! [UseKuka 1]
+  //Here we want to use the Kuka robot as a tracking device. Therefore we instantiate a object of the class
+  //KukaRobotDevice and make some settings which are necessary for a proper connection to the device.
+  MITK_INFO << "Vega tracking";
+  //QMessageBox::warning(nullptr, "Warning", "You have to set the parameters for the NDITracking device inside the code (QmitkIGTTutorialView::OnStartIGT()) before you can use it.");
+  lancet::NDIVegaTrackingDevice::Pointer vegaTrackingDevice = lancet::NDIVegaTrackingDevice::New();  //instantiate
+
+  //Create Navigation Data Source with the factory class, and the visualize filter.
+  lancet::TrackingDeviceSourceConfiguratorLancet::Pointer kukaSourceFactory =
+    lancet::TrackingDeviceSourceConfiguratorLancet::New(m_VegaToolStorage, vegaTrackingDevice);
+
+  m_VegaSource = kukaSourceFactory->CreateTrackingDeviceSource(m_VegaVisualizer);
+
+  m_VegaSource->Connect();
+  m_VegaSource->StartTracking();
+
+  //update visualize filter by timer
+  if (m_VegaVisualizeTimer == nullptr)
+  {
+    m_VegaVisualizeTimer = new QTimer(this);  //create a new timer
+  }
+  connect(m_VegaVisualizeTimer, SIGNAL(timeout()), this, SLOT(OnVegaVisualizeTimer())); //connect the timer to the method OnTimer()
+
+  m_VegaVisualizeTimer->start(100);  //Every 100ms the method OnTimer() is called. -> 10fps
+}
+
+void SurgicalSimulate::GeneratePoses()
+{
+}
+
+void SurgicalSimulate::CapturePose(bool translationOnly)
+{
+  //Output sequence is the same as AddTool sequence
+  //get navigation data of flange in robot coords,
+  mitk::NavigationData::Pointer nd_robot2flange = m_KukaSource->GetOutput(0);
+  
+  //get navigation data of RobotEndRF in ndi coords,
+  mitk::NavigationData::Pointer nd_Ndi2RobotEndRF = m_VegaSource->GetOutput(m_VegaToolStorage->GetToolIndexByName("RobotEndRF"));
+  //get navigation data of RobotBaseRF in ndi coords,
+  mitk::NavigationData::Pointer nd_Ndi2RobotBaseRF = m_VegaSource->GetOutput(m_VegaToolStorage->GetToolIndexByName("RobotBaseRF"));
+  //get navigation data RobotEndRF in reference frame RobotBaseRF
+  mitk::NavigationData::Pointer nd_RobotBaseRF2RobotEndRF = GetNavigationDataInRef(nd_Ndi2RobotEndRF, nd_Ndi2RobotBaseRF);
+  
+  //add nd to registration module
+  m_RobotRegistration->AddPose(nd_robot2flange, nd_RobotBaseRF2RobotEndRF, translationOnly);
+}
+
+mitk::NavigationData::Pointer SurgicalSimulate::GetNavigationDataInRef(mitk::NavigationData::Pointer nd,
+  mitk::NavigationData::Pointer nd_ref)
+{
+  mitk::NavigationData::Pointer res;
+  res->Graft(nd);
+  res->Compose(nd_ref->GetInverse());
+  return res;
 }
 
 void SurgicalSimulate::UseKuka()
@@ -150,8 +181,56 @@ void SurgicalSimulate::OnKukaVisualizeTimer()
  //will be adapted.
   m_KukaVisualizer->Update();
 
-  auto geo = this->GetDataStorage()->ComputeBoundingGeometry3D(this->GetDataStorage()->GetAll());
-  mitk::RenderingManager::GetInstance()->InitializeViews(geo);
+  // auto geo = this->GetDataStorage()->ComputeBoundingGeometry3D(this->GetDataStorage()->GetAll());
+  // mitk::RenderingManager::GetInstance()->InitializeViews(geo);
   this->RequestRenderWindowUpdate();
+}
+
+void SurgicalSimulate::OnVegaVisualizeTimer()
+{
+  //Here we call the Update() method from the Visualization Filter. Internally the filter checks if
+ //new NavigationData is available. If we have a new NavigationData the cone position and orientation
+ //will be adapted.
+  m_VegaVisualizer->Update();
+
+  // auto geo = this->GetDataStorage()->ComputeBoundingGeometry3D(this->GetDataStorage()->GetAll());
+  // mitk::RenderingManager::GetInstance()->InitializeViews(geo);
+  this->RequestRenderWindowUpdate();
+}
+
+void SurgicalSimulate::OnRobotCapture()
+{
+  if (m_IndexOfRobotCapture<5) //The first five translations, 
+  {
+    CapturePose(true);
+    //Increase the count each time you click the button
+    m_IndexOfRobotCapture++;
+    MITK_INFO << "OnRobotCapture: " << m_IndexOfRobotCapture;
+  }
+  else if (m_IndexOfRobotCapture < 10)//the last five rotations
+  {
+    CapturePose(false);
+    //Increase the count each time you click the button
+    m_IndexOfRobotCapture++;
+    MITK_INFO << "OnRobotCapture: " << m_IndexOfRobotCapture;
+  }
+  else
+  {
+    m_RobotRegistration->Regist();
+    vtkMatrix4x4* matrix4x4 = nullptr;
+    m_RobotRegistration->GetRegistraionMatrix(matrix4x4);
+    MITK_INFO << "OnRobotCapture finish: " << m_IndexOfRobotCapture;
+    matrix4x4->Print(std::cout);
+
+    mitk::AffineTransform3D::Pointer affine_transform = mitk::AffineTransform3D::New();
+
+    mitk::TransferVtkMatrixToItkTransform(matrix4x4, affine_transform.GetPointer());
+
+    m_KukaVisualizer->SetOffset(0, affine_transform);
+  }
+
+
+  
+
 }
 

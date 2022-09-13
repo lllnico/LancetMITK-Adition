@@ -21,6 +21,7 @@ found in the LICENSE file.
 
 #include "lancetNavigationObjectVisualizationFilter.h"
 #include "mitkTrackingDeviceSource.h"
+#include "robotRegistration.h"
 #include "ui_SurgicalSimulateControls.h"
 
 /**
@@ -41,10 +42,16 @@ public:
   static const std::string VIEW_ID;
 
 public slots:
-  // \brief Step1:Use a NDI Vega Tracking Device
+  //Step1:Use a kuka Tracking Device
   void UseKuka();
-
   void OnKukaVisualizeTimer();
+  //Step1:Use a NDI Vega Tracking Device
+  void UseVega();
+  void OnVegaVisualizeTimer();
+
+  //Step2:Robot Registration;
+  void OnRobotCapture();
+
 
 protected:
   virtual void CreateQtPartControl(QWidget *parent) override;
@@ -55,10 +62,18 @@ protected:
   virtual void OnSelectionChanged(berry::IWorkbenchPart::Pointer source,
                                   const QList<mitk::DataNode::Pointer> &nodes) override;
 
-  /// \brief Step1:Use a NDI Vega Tracking Device
-  void UseVega();
-
   
+
+  // [Step2 Robot Registration]
+    /// \brief Generate poses that robot needs to move for registration.
+    ///We take the present pose of the robot arm as the initial pose, first translating five poses, and then moving five poses with rotation.
+    void GeneratePoses();
+
+    void CapturePose(bool translationOnly);
+
+  //*********Helper Function****************
+  RobotRegistration::Pointer m_RobotRegistration;
+  mitk::NavigationData::Pointer GetNavigationDataInRef(mitk::NavigationData::Pointer nd, mitk::NavigationData::Pointer nd_ref);
 
   Ui::SurgicalSimulateControls m_Controls;
 
@@ -68,8 +83,14 @@ protected:
   mitk::TrackingDeviceSource::Pointer m_KukaSource;
 
   lancet::NavigationObjectVisualizationFilter::Pointer m_KukaVisualizer;
+  lancet::NavigationObjectVisualizationFilter::Pointer m_VegaVisualizer;
   QTimer* m_KukaVisualizeTimer{ nullptr };
+  QTimer* m_VegaVisualizeTimer{ nullptr };
   mitk::NavigationToolStorage::Pointer  m_KukaToolStorage;
+  mitk::NavigationToolStorage::Pointer  m_VegaToolStorage;
+
+  //robot registration
+  unsigned int m_IndexOfRobotCapture{0};
 };
 
 #endif // SurgicalSimulate_h
