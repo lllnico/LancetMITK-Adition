@@ -167,7 +167,7 @@ void RobotView::UpdateToolPosition()
 
 void RobotView::SelfCheck()
 {
-  if (m_device.IsNotNull() && m_device->GetIsConnected())
+  if (m_device.IsNotNull() && m_device->GetState()!=0)
   {
     m_device->RequestExecOperate(/*"Robot",*/ "setio", { "20", "20" });
   }

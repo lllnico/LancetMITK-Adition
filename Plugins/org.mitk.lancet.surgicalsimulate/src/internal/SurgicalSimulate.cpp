@@ -129,20 +129,25 @@ void SurgicalSimulate::CapturePose(bool translationOnly)
   mitk::NavigationData::Pointer nd_robot2flange = m_KukaSource->GetOutput(0);
   
   //get navigation data of RobotEndRF in ndi coords,
-  mitk::NavigationData::Pointer nd_Ndi2RobotEndRF = m_VegaSource->GetOutput(m_VegaToolStorage->GetToolIndexByName("RobotEndRF"));
+  auto RobotEndRF = m_VegaToolStorage->GetToolIndexByName("RobotEndRF");
+  mitk::NavigationData::Pointer nd_Ndi2RobotEndRF = m_VegaSource->GetOutput(RobotEndRF);
   //get navigation data of RobotBaseRF in ndi coords,
-  mitk::NavigationData::Pointer nd_Ndi2RobotBaseRF = m_VegaSource->GetOutput(m_VegaToolStorage->GetToolIndexByName("RobotBaseRF"));
+  auto RobotBaseRF = m_VegaToolStorage->GetToolIndexByName("RobotBaseRF");
+  mitk::NavigationData::Pointer nd_Ndi2RobotBaseRF = m_VegaSource->GetOutput(RobotBaseRF);
   //get navigation data RobotEndRF in reference frame RobotBaseRF
   mitk::NavigationData::Pointer nd_RobotBaseRF2RobotEndRF = GetNavigationDataInRef(nd_Ndi2RobotEndRF, nd_Ndi2RobotBaseRF);
   
   //add nd to registration module
-  m_RobotRegistration->AddPose(nd_robot2flange, nd_RobotBaseRF2RobotEndRF, translationOnly);
+  m_RobotRegistration.AddPose(nd_robot2flange, nd_RobotBaseRF2RobotEndRF, translationOnly);
+
+  MITK_INFO << nd_robot2flange;
+  MITK_INFO << nd_RobotBaseRF2RobotEndRF;
 }
 
 mitk::NavigationData::Pointer SurgicalSimulate::GetNavigationDataInRef(mitk::NavigationData::Pointer nd,
   mitk::NavigationData::Pointer nd_ref)
 {
-  mitk::NavigationData::Pointer res;
+  mitk::NavigationData::Pointer res = mitk::NavigationData::New();
   res->Graft(nd);
   res->Compose(nd_ref->GetInverse());
   return res;
@@ -240,9 +245,9 @@ void SurgicalSimulate::OnRobotCapture()
   }
   else
   {
-    m_RobotRegistration->Regist();
-    vtkMatrix4x4* matrix4x4 = nullptr;
-    m_RobotRegistration->GetRegistraionMatrix(matrix4x4);
+    m_RobotRegistration.Regist();
+    vtkMatrix4x4* matrix4x4 = vtkMatrix4x4::New();
+    m_RobotRegistration.GetRegistraionMatrix(matrix4x4);
     MITK_INFO << "OnRobotCapture finish: " << m_IndexOfRobotCapture;
     matrix4x4->Print(std::cout);
 
@@ -378,7 +383,7 @@ void SurgicalSimulate::OnAutoMove()
 
 void SurgicalSimulate::OnResetRobotRegistration()
 {
-  m_RobotRegistration->RemoveAllPose();
+  m_RobotRegistration.RemoveAllPose();
   m_IndexOfRobotCapture = 0;
 }
 

@@ -76,7 +76,7 @@ protected:
     void CapturePose(bool translationOnly);
 
   //*********Helper Function****************
-  RobotRegistration::Pointer m_RobotRegistration;
+  RobotRegistration m_RobotRegistration;
   mitk::NavigationData::Pointer GetNavigationDataInRef(mitk::NavigationData::Pointer nd, mitk::NavigationData::Pointer nd_ref);
 
   Ui::SurgicalSimulateControls m_Controls;
