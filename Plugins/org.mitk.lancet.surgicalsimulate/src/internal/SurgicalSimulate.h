@@ -45,6 +45,7 @@ public:
 public slots:
   //Step1:Use a kuka Tracking Device
   void UseKuka();
+  void StartTracking();
   void OnKukaVisualizeTimer();
   void OnSelfCheck();
   //Step1:Use a NDI Vega Tracking Device
@@ -56,8 +57,10 @@ public slots:
   void OnAutoMove();
   void OnResetRobotRegistration();
 
-
+  
+ 
 protected:
+
   virtual void CreateQtPartControl(QWidget *parent) override;
 
   virtual void SetFocus() override;

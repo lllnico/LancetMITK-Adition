@@ -142,13 +142,13 @@ void RobotView::ConnectDevice()
 void RobotView::DisConnectDevice()
 {
 	m_device->CloseConnection();
-	if (m_device->GetIsConnected())
+	if (m_device->GetState()==0)
 	{
-		m_Controls.robotconnectstate->setText("Connected");
+		m_Controls.robotconnectstate->setText("Disconnected");
 	}
 	else
 	{
-		m_Controls.robotconnectstate->setText("Disconnected");
+		m_Controls.robotconnectstate->setText("Connected");		
 	}
 }
 

@@ -41,6 +41,7 @@ void SurgicalSimulate::SetFocus()
   m_Controls.pushButton_connectKuka->setFocus();
 }
 
+
 void SurgicalSimulate::CreateQtPartControl(QWidget *parent)
 {
   // create GUI widgets from the Qt Designer's .ui file
@@ -51,6 +52,7 @@ void SurgicalSimulate::CreateQtPartControl(QWidget *parent)
   connect(m_Controls.pushButton_automove, &QPushButton::clicked, this, &SurgicalSimulate::OnAutoMove);
   connect(m_Controls.pushButton_selfcheck, &QPushButton::clicked, this, &SurgicalSimulate::OnSelfCheck);
   connect(m_Controls.pushButton_resetRobotReg, &QPushButton::clicked, this, &SurgicalSimulate::OnResetRobotRegistration);
+  connect(m_Controls.pushButton_startTracking, &QPushButton::clicked, this, &SurgicalSimulate::StartTracking);
 }
 
 void SurgicalSimulate::OnSelectionChanged(berry::IWorkbenchPart::Pointer /*source*/,
@@ -97,16 +99,18 @@ void SurgicalSimulate::UseVega()
   m_VegaSource = kukaSourceFactory->CreateTrackingDeviceSource(m_VegaVisualizer);
 
   m_VegaSource->Connect();
+
   m_VegaSource->StartTracking();
 
   //update visualize filter by timer
   if (m_VegaVisualizeTimer == nullptr)
   {
-    m_VegaVisualizeTimer = new QTimer(this);  //create a new timer
+	  m_VegaVisualizeTimer = new QTimer(this);  //create a new timer
   }
   connect(m_VegaVisualizeTimer, SIGNAL(timeout()), this, SLOT(OnVegaVisualizeTimer())); //connect the timer to the method OnTimer()
 
   m_VegaVisualizeTimer->start(100);  //Every 100ms the method OnTimer() is called. -> 10fps
+  
 }
 
 void SurgicalSimulate::GeneratePoses()
@@ -179,16 +183,34 @@ void SurgicalSimulate::UseKuka()
   m_KukaSource = kukaSourceFactory->CreateTrackingDeviceSource(m_KukaVisualizer);
 
   m_KukaSource->Connect();
-  m_KukaSource->StartTracking();
+  QThread::msleep(1000);
+  m_KukaTrackingDevice->RequestExecOperate("movel", QStringList{ "0.0","0.0","0.0","0.0","0.0","0.0" });
+  QThread::msleep(1000);
+  m_KukaTrackingDevice->RequestExecOperate("setworkmode", { "11" });
+  QThread::msleep(1000);
+  m_KukaTrackingDevice->RequestExecOperate("setworkmode", { "5" });
+}
 
-  //update visualize filter by timer
-  if (m_KukaVisualizeTimer == nullptr)
-  {
-    m_KukaVisualizeTimer = new QTimer(this);  //create a new timer
-  }
-  connect(m_KukaVisualizeTimer, SIGNAL(timeout()), this, SLOT(OnKukaVisualizeTimer())); //connect the timer to the method OnTimer()
+void SurgicalSimulate::StartTracking()
+{
+	if (m_KukaTrackingDevice->GetState()==1) //ready
+	{
+		m_KukaSource->StartTracking();
 
-  m_KukaVisualizeTimer->start(100);  //Every 100ms the method OnTimer() is called. -> 10fps
+		//update visualize filter by timer
+		if (m_KukaVisualizeTimer == nullptr)
+		{
+			m_KukaVisualizeTimer = new QTimer(this);  //create a new timer
+		}
+		connect(m_KukaVisualizeTimer, SIGNAL(timeout()), this, SLOT(OnKukaVisualizeTimer())); //connect the timer to the method OnTimer()
+
+		m_KukaVisualizeTimer->start(100);  //Every 100ms the method OnTimer() is called. -> 10fps
+	}
+	else
+	{
+		MITK_ERROR << "Tracking not start,Device State:" << m_KukaTrackingDevice->GetState();
+	}
+	
 }
 
 void SurgicalSimulate::OnKukaVisualizeTimer()
@@ -196,11 +218,16 @@ void SurgicalSimulate::OnKukaVisualizeTimer()
   //Here we call the Update() method from the Visualization Filter. Internally the filter checks if
  //new NavigationData is available. If we have a new NavigationData the cone position and orientation
  //will be adapted.
-  m_KukaVisualizer->Update();
+	if (m_KukaVisualizer.IsNotNull())
+	{
+		m_KukaVisualizer->Update(); //todo Crash When close plugin
+		this->RequestRenderWindowUpdate();
+	}
+  
 
   // auto geo = this->GetDataStorage()->ComputeBoundingGeometry3D(this->GetDataStorage()->GetAll());
   // mitk::RenderingManager::GetInstance()->InitializeViews(geo);
-  this->RequestRenderWindowUpdate();
+  
 }
 
 void SurgicalSimulate::OnSelfCheck()
@@ -220,11 +247,16 @@ void SurgicalSimulate::OnVegaVisualizeTimer()
   //Here we call the Update() method from the Visualization Filter. Internally the filter checks if
  //new NavigationData is available. If we have a new NavigationData the cone position and orientation
  //will be adapted.
-  m_VegaVisualizer->Update();
-
-  // auto geo = this->GetDataStorage()->ComputeBoundingGeometry3D(this->GetDataStorage()->GetAll());
+	if (m_VegaVisualizer.IsNotNull())
+	{
+		m_VegaVisualizer->Update();
+		// auto geo = this->GetDataStorage()->ComputeBoundingGeometry3D(this->GetDataStorage()->GetAll());
   // mitk::RenderingManager::GetInstance()->InitializeViews(geo);
-  this->RequestRenderWindowUpdate();
+		this->RequestRenderWindowUpdate();
+	}
+  
+
+  
 }
 
 void SurgicalSimulate::OnRobotCapture()

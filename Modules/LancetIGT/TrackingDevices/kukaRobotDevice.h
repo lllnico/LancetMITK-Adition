@@ -44,7 +44,7 @@ namespace lancet
 
     typedef std::vector<mitk::TrackingTool::Pointer> KukaEndEffectorContainerType;
 
-    itkGetMacro(IsConnected, bool);
+    //itkGetMacro(IsConnected, bool);
     /**
        * @brief Opens the connection to the device. This have to be done before the tracking is started.
        */
@@ -103,7 +103,7 @@ namespace lancet
     static void heartbeatThreadWorker(KukaRobotDevice* _this);
     void ThreadStartTracking();
   private:
-    bool m_IsConnected = false;
+    //bool m_IsConnected = false;
 
     QPointer<QThread> m_Heartbeat;
     std::array<double, 6> m_TrackingData = {};

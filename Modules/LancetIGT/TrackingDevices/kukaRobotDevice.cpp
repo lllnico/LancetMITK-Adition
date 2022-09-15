@@ -11,18 +11,20 @@ namespace lancet
   bool KukaRobotDevice::OpenConnection()
   {
     m_RobotApi.connectrobot();
-    if (GetState() == Ready)
+
+
+    /*if (GetState() == Ready)
     {
       MITK_WARN << "Ready after m_RobotApi.connectrobot();";
     }
     else {
       MITK_WARN << "Setup after m_RobotApi.connectrobot();";
-    }
+    }*/
 
     //todo BUG:isRobotConnected will not turn ture immdiately
-    SetState(TrackingDeviceState::Ready);
-    m_Heartbeat = QThread::create(heartbeatThreadWorker, this);
-    m_Heartbeat->start();
+    //SetState(TrackingDeviceState::Ready);
+    /*m_Heartbeat = QThread::create(heartbeatThreadWorker, this);
+    m_Heartbeat->start();*/
     return true;
   }
 
@@ -30,7 +32,7 @@ namespace lancet
   {
     m_RobotApi.disconnectrobot();
     SetState(TrackingDeviceState::Setup);
-    return !m_IsConnected;
+    return true;
   }
 
   bool KukaRobotDevice::StartTracking()
@@ -205,7 +207,8 @@ namespace lancet
     QString param = str1 + "," + str2 + "," + str3 + "," + str4 + "," + str5 + "," + str6;
     MITK_INFO << "Robot move to:" << param.toStdString();
     RequestExecOperate( "movep", param.split(','));
-    //QThread::msleep(100);
+    QThread::msleep(1000);
+	RequestExecOperate("setio", { "2","6" });
   }
 
   std::vector<double> KukaRobotDevice::kukamatrix2angle(const double matrix3x3[3][3])
@@ -306,7 +309,7 @@ namespace lancet
   {
     m_Data = lancet::KukaRobotTypeInformation::GetDeviceDataLancetKukaTrackingDevice();
     m_KukaEndEffectors.clear();
-    //udp service
+    ////udp service
     m_udp.setRepetitiveHeartbeatInterval(500);
     m_udp.setRemoteHostPort(m_RemotePort.toUInt());
     m_udp.setRemoteHostAddress(QString::fromStdString(m_RemoteIpAddress));
@@ -317,8 +320,8 @@ namespace lancet
     MITK_INFO << QString("bind udp %1:%2 at fps:%3").arg(QString::fromStdString(m_IpAddress)).arg(m_Port.toInt()).arg(m_udp.repetitiveHeartbeatInterval()).toStdString();
     m_udp.startRepetitiveHeartbeat();
 
-    //connect(&m_RobotApi, SIGNAL(signal_api_isRobotConnected(bool)),
-     // this, SLOT(IsRobotConnected(bool)));//todo BUGFIX
+    connect(&m_RobotApi, SIGNAL(signal_api_isRobotConnected(bool)),
+      this, SLOT(IsRobotConnected(bool)));//todo BUGFIX
   }
 
   KukaRobotDevice::~KukaRobotDevice()
@@ -362,26 +365,28 @@ namespace lancet
 
   void KukaRobotDevice::IsRobotConnected(bool isConnect)
   {
-    m_IsConnected = isConnect;
+    //m_IsConnected = isConnect;
     if (isConnect)
     {
       SetState(Ready);
 
       m_Heartbeat = QThread::create(heartbeatThreadWorker, this);
       m_Heartbeat->start();
+	  MITK_INFO << "!connect!";
     }
     else
     {
-      SetState(Setup);
+      //SetState(Setup);
+		MITK_INFO << "!disconnect!";
     }
   }
 
   void KukaRobotDevice::heartbeatThreadWorker(KukaRobotDevice* _this)
   {
-    while (_this->m_IsConnected == true)
+    while (/*_this->m_IsConnected ==*/ true) //todo bugfix isConnected
     {
       _this->m_RobotApi.setspeed(50);
-      QThread::msleep(1000);
+      QThread::msleep(500);
     }
   }
 
